@@ -9,6 +9,7 @@ module FingerTree exposing
     , leftUncons, rightUncons
     , head, tail, headR, tailR
     , split, partition
+    , annotation
     , leftCons, rightCons, append
     , takeUntil, dropUntil
     , reverse
@@ -70,6 +71,7 @@ This implementation is ported from:
 @docs leftUncons, rightUncons
 @docs head, tail, headR, tailR
 @docs split, partition
+@docs annotation
 
 
 ## Update
