@@ -1,6 +1,6 @@
 module FingerTree exposing
     ( FingerTree, Ops
-    , empty, singleton, fromList, initialize
+    , empty, singleton, fromList, initialize, repeat
     , toList
     , foldl, foldr
     , equals
@@ -15,7 +15,6 @@ module FingerTree exposing
     , map, filter, filterMap
     , structuralInvariant
     -- TODO some of these will be only useful in FingerTree.Array etc.
-    -- TODO repeat
     -- TODO range
     -- TODO indexedMap
     -- TODO all
@@ -57,7 +56,7 @@ This implementation is ported from:
 
 ## Creation
 
-@docs empty, singleton, fromList, initialize
+@docs empty, singleton, fromList, initialize, repeat
 
 
 ## Conversion
@@ -1455,3 +1454,11 @@ initialize ops n toElement =
         (\i acc -> rightCons ops (toElement i) acc)
         empty
         (List.range 0 (n - 1))
+
+
+{-| Repeat an element n times.
+-}
+repeat : Ops e ann -> Int -> e -> FingerTree e ann
+repeat ops n el =
+    List.repeat n el
+        |> fromList ops

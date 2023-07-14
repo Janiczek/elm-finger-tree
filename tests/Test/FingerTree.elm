@@ -26,7 +26,8 @@ fingerTreeCreationRecipe =
             [ Fuzz.constant Empty
             , Fuzz.map Singleton Fuzz.int
             , Fuzz.map FromList (Fuzz.list Fuzz.int)
-            , Fuzz.map InitializeTimesThreeMod7 Fuzz.int
+            , Fuzz.map InitializeTimesThreeMod7 (Fuzz.intRange 0 10)
+            , Fuzz.map2 Repeat (Fuzz.intRange 0 10) Fuzz.int
             ]
         )
         (Fuzz.list
@@ -51,6 +52,7 @@ type CreateVia
     | Singleton Int
     | FromList (List Int)
     | InitializeTimesThreeMod7 Int
+    | Repeat Int Int
 
 
 type UpdateVia
@@ -80,6 +82,9 @@ create via =
 
         InitializeTimesThreeMod7 n ->
             FingerTree.initialize ops n (\i -> (i * 3) |> modBy 7)
+
+        Repeat times x ->
+            FingerTree.repeat ops times x
 
 
 update : UpdateVia -> FingerTree Int Int -> FingerTree Int Int
@@ -341,6 +346,7 @@ After toList/fromList:
         , Test.fuzz fingerTreeFuzzer "takeUntil/dropUntil/split" <|
             \tree ->
                 let
+                    fn : Int -> Bool
                     fn =
                         \n -> n >= 5
 
