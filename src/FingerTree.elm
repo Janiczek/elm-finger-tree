@@ -1,17 +1,42 @@
 module FingerTree exposing
     ( FingerTree, Ops
-    , empty, singleton, fromList
+    , empty, singleton, fromList, initialize
     , toList
+    , foldl, foldr
     , equals
     , isEmpty, count
+    , member
     , leftUncons, rightUncons
     , head, tail, headR, tailR
-    , split
-    , foldl, foldr
+    , split, partition
     , leftCons, rightCons, append
     , takeUntil, dropUntil
     , reverse
+    , map, filter, filterMap
     , structuralInvariant
+    -- TODO some of these will be only useful in FingerTree.Array etc.
+    -- TODO repeat
+    -- TODO range
+    -- TODO indexedMap
+    -- TODO all
+    -- TODO any
+    -- TODO maximum
+    -- TODO minimum
+    -- TODO sum
+    -- TODO product
+    -- TODO concat
+    -- TODO concatMap
+    -- TODO intersperse
+    -- TODO map2
+    -- TODO map3
+    -- TODO map4
+    -- TODO map5
+    -- TODO sort
+    -- TODO sortBy
+    -- TODO sortWith
+    -- TODO take
+    -- TODO drop
+    -- TODO unzip
     )
 
 {-| Finger trees:
@@ -32,29 +57,31 @@ This implementation is ported from:
 
 ## Creation
 
-@docs empty, singleton, fromList
+@docs empty, singleton, fromList, initialize
 
 
 ## Conversion
 
 @docs toList
+@docs foldl, foldr
 
 
 ## Query
 
 @docs equals
 @docs isEmpty, count
+@docs member
 @docs leftUncons, rightUncons
 @docs head, tail, headR, tailR
-@docs split
+@docs split, partition
 
 
 ## Update
 
-@docs foldl, foldr
 @docs leftCons, rightCons, append
 @docs takeUntil, dropUntil
 @docs reverse
+@docs map, filter, filterMap
 
 
 ## Testing
@@ -98,7 +125,7 @@ annotations.
 type alias Ops e a =
     { empty : a
     , add : a -> a -> a
-    , elementValue : e -> a
+    , fromElement : e -> a
     }
 
 
@@ -306,11 +333,11 @@ isMeasuredTree ({ add } as ops) tree =
                    )
 
 
-nodeToList : Node e a -> List ( e, a )
+nodeToList : Node e a -> List e
 nodeToList node =
     case node of
-        Tip e a ->
-            [ ( e, a ) ]
+        Tip e _ ->
+            [ e ]
 
         Node2 _ n1 n2 ->
             nodeToList n1 ++ nodeToList n2
@@ -319,7 +346,7 @@ nodeToList node =
             nodeToList n1 ++ nodeToList n2 ++ nodeToList n3
 
 
-digitToList : Digit e a -> List ( e, a )
+digitToList : Digit e a -> List e
 digitToList digit =
     case digit of
         D1 n1 ->
@@ -340,7 +367,7 @@ digitToList digit =
 O(n)
 
 -}
-toList : FingerTree e a -> List ( e, a )
+toList : FingerTree e a -> List e
 toList tree =
     case tree of
         Empty ->
@@ -370,7 +397,7 @@ O(1)
 -}
 singleton : Ops e a -> e -> FingerTree e a
 singleton ops e =
-    Single (Tip e (ops.elementValue e))
+    Single (Tip e (ops.fromElement e))
 
 
 {-| Compare two Finger Trees for equality.
@@ -431,7 +458,7 @@ rightConsNode ops newNode tree =
             deep ops l m (D4 n1 n2 n3 newNode)
 
         Deep _ l m (D4 n1 n2 n3 n4) ->
-            deep ops l (rightConsNode ops (node3 ops n2 n3 n4) m) (D2 n1 newNode)
+            deep ops l (rightConsNode ops (node3 ops n1 n2 n3) m) (D2 n4 newNode)
 
 
 {-| A way to construct Deep while calculating the annotation correctly.
@@ -487,9 +514,9 @@ node3 { add } n1 n2 n3 =
 O(log(n)), O(1) amortized
 
 -}
-leftCons : Ops e a -> ( e, a ) -> FingerTree e a -> FingerTree e a
-leftCons ops ( e, a ) tree =
-    leftConsNode ops (Tip e a) tree
+leftCons : Ops e a -> e -> FingerTree e a -> FingerTree e a
+leftCons ops e tree =
+    leftConsNode ops (Tip e (ops.fromElement e)) tree
 
 
 {-| Append element at the right end.
@@ -497,20 +524,22 @@ leftCons ops ( e, a ) tree =
 O(log(n)), O(1) amortized
 
 -}
-rightCons : Ops e a -> ( e, a ) -> FingerTree e a -> FingerTree e a
-rightCons ops ( e, a ) tree =
-    rightConsNode ops (Tip e a) tree
+rightCons : Ops e a -> e -> FingerTree e a -> FingerTree e a
+rightCons ops e tree =
+    rightConsNode ops (Tip e (ops.fromElement e)) tree
 
 
 {-| Convert list to a Finger Tree.
 
-O(n log(n))
+O(n log(n)), O(n) amortized
 
 -}
-fromList : Ops e a -> List ( e, a ) -> FingerTree e a
+fromList : Ops e a -> List e -> FingerTree e a
 fromList ops list =
-    -- TODO is this correct or should one of these be right?
-    List.foldl (leftCons ops) Empty list
+    List.foldr
+        (\e acc -> leftCons ops e acc)
+        Empty
+        list
 
 
 digitToTree : Ops e a -> Digit e a -> FingerTree e a
@@ -718,13 +747,11 @@ tailR ops tree =
 
 leftConsNodes : Ops e a -> List (Node e a) -> FingerTree e a -> FingerTree e a
 leftConsNodes ops nodes tree =
-    -- TODO is this correct or should one of these be right?
-    List.foldl (leftConsNode ops) tree nodes
+    List.foldr (leftConsNode ops) tree nodes
 
 
 rightConsNodes : Ops e a -> List (Node e a) -> FingerTree e a -> FingerTree e a
 rightConsNodes ops nodes tree =
-    -- TODO is this correct or should one of these be right?
     List.foldl (rightConsNode ops) tree nodes
 
 
@@ -747,12 +774,11 @@ compactNodes ops nodes =
                     node3 ops a b c :: acc
 
                 [ a, b, c, d ] ->
-                    node2 ops a b :: node2 ops c d :: acc
+                    node2 ops c d :: node2 ops a b :: acc
 
                 a :: b :: c :: rest ->
                     go rest (node3 ops a b c :: acc)
     in
-    -- TODO check this keeps the order
     go nodes []
         |> List.reverse
 
@@ -773,7 +799,19 @@ append3 ops l xs r =
             rightConsNode ops x (rightConsNodes ops xs l)
 
         ( Deep _ l1 m1 r1, Deep _ l2 m2 r2 ) ->
-            deep ops l1 (append3 ops m1 (compactNodes ops (digitToNodes r1 ++ xs ++ digitToNodes l2)) m2) r2
+            deep ops
+                l1
+                (append3 ops
+                    m1
+                    (compactNodes ops
+                        (digitToNodes r1
+                            ++ xs
+                            ++ digitToNodes l2
+                        )
+                    )
+                    m2
+                )
+                r2
 
 
 {-| Concatenate two Finger Trees.
@@ -839,8 +877,8 @@ split ops pred tree =
             Nothing ->
                 ( Empty, Empty )
 
-            Just ( l, x, r ) ->
-                ( l, leftCons ops x r )
+            Just ( l, ( e, _ ), r ) ->
+                ( l, leftCons ops e r )
 
     else
         ( tree, Empty )
@@ -1063,11 +1101,11 @@ splitDigit ops pred i digit =
                         ( Just (D3 n1 n2 n3), n4, Nothing )
 
 
-foldlNode : (( e, a ) -> s -> s) -> s -> Node e a -> s
+foldlNode : (e -> s -> s) -> s -> Node e a -> s
 foldlNode fn init node =
     case node of
-        Tip e a ->
-            fn ( e, a ) init
+        Tip e _ ->
+            fn e init
 
         Node2 _ n1 n2 ->
             foldlNode fn (foldlNode fn init n1) n2
@@ -1076,11 +1114,11 @@ foldlNode fn init node =
             foldlNode fn (foldlNode fn (foldlNode fn init n1) n2) n3
 
 
-foldrNode : (( e, a ) -> s -> s) -> s -> Node e a -> s
+foldrNode : (e -> s -> s) -> s -> Node e a -> s
 foldrNode fn init node =
     case node of
-        Tip e a ->
-            fn ( e, a ) init
+        Tip e _ ->
+            fn e init
 
         Node2 _ n1 n2 ->
             foldrNode fn (foldrNode fn init n2) n1
@@ -1089,7 +1127,7 @@ foldrNode fn init node =
             foldrNode fn (foldrNode fn (foldrNode fn init n3) n2) n1
 
 
-foldlDigit : (( e, a ) -> s -> s) -> s -> Digit e a -> s
+foldlDigit : (e -> s -> s) -> s -> Digit e a -> s
 foldlDigit fn init digit =
     case digit of
         D1 n1 ->
@@ -1105,7 +1143,7 @@ foldlDigit fn init digit =
             foldlNode fn (foldlNode fn (foldlNode fn (foldlNode fn init n1) n2) n3) n4
 
 
-foldrDigit : (( e, a ) -> s -> s) -> s -> Digit e a -> s
+foldrDigit : (e -> s -> s) -> s -> Digit e a -> s
 foldrDigit fn init digit =
     case digit of
         D1 n1 ->
@@ -1123,7 +1161,7 @@ foldrDigit fn init digit =
 
 {-| Fold with function from the left.
 -}
-foldl : (( e, a ) -> s -> s) -> s -> FingerTree e a -> s
+foldl : (e -> s -> s) -> s -> FingerTree e a -> s
 foldl fn init tree =
     case tree of
         Empty ->
@@ -1138,7 +1176,7 @@ foldl fn init tree =
 
 {-| Fold with function from the right.
 -}
-foldr : (( e, a ) -> s -> s) -> s -> FingerTree e a -> s
+foldr : (e -> s -> s) -> s -> FingerTree e a -> s
 foldr fn init tree =
     case tree of
         Empty ->
@@ -1263,3 +1301,180 @@ reverseNode ops fn node =
                 (reverseNode ops fn n3)
                 (reverseNode ops fn n2)
                 (reverseNode ops fn n1)
+
+
+{-| Filter out certain values while transforming the rest.
+`filterMap` calls `fn` on each value and only keeps the `Just` results.
+-}
+filterMap : Ops e2 a2 -> (e1 -> Maybe e2) -> FingerTree e1 a1 -> FingerTree e2 a2
+filterMap ops fn tree =
+    foldr
+        (\x acc ->
+            case fn x of
+                Nothing ->
+                    acc
+
+                Just xx ->
+                    leftCons ops xx acc
+        )
+        empty
+        tree
+
+
+{-| Keep elements that satisfy the test.
+-}
+filter : Ops e a -> (e -> Bool) -> FingerTree e a -> FingerTree e a
+filter ops pred tree =
+    foldr
+        (\x acc ->
+            if pred x then
+                leftCons ops x acc
+
+            else
+                acc
+        )
+        empty
+        tree
+
+
+{-| Apply a function to every element of a list.
+-}
+map : Ops e2 a2 -> (e1 -> e2) -> FingerTree e1 a1 -> FingerTree e2 a2
+map ops fn tree =
+    case tree of
+        Empty ->
+            Empty
+
+        Single n ->
+            Single (mapNode ops fn n)
+
+        Deep _ l m r ->
+            deep
+                ops
+                (mapDigit ops fn l)
+                (map ops fn m)
+                (mapDigit ops fn r)
+
+
+mapNode : Ops e2 a2 -> (e1 -> e2) -> Node e1 a1 -> Node e2 a2
+mapNode ops fn node =
+    case node of
+        Tip e1 _ ->
+            let
+                e2 : e2
+                e2 =
+                    fn e1
+            in
+            Tip e2 (ops.fromElement e2)
+
+        Node2 _ n1 n2 ->
+            node2 ops
+                (mapNode ops fn n1)
+                (mapNode ops fn n2)
+
+        Node3 _ n1 n2 n3 ->
+            node3 ops
+                (mapNode ops fn n1)
+                (mapNode ops fn n2)
+                (mapNode ops fn n3)
+
+
+mapDigit : Ops e2 a2 -> (e1 -> e2) -> Digit e1 a1 -> Digit e2 a2
+mapDigit ops fn digit =
+    case digit of
+        D1 n1 ->
+            D1 (mapNode ops fn n1)
+
+        D2 n1 n2 ->
+            D2
+                (mapNode ops fn n1)
+                (mapNode ops fn n2)
+
+        D3 n1 n2 n3 ->
+            D3
+                (mapNode ops fn n1)
+                (mapNode ops fn n2)
+                (mapNode ops fn n3)
+
+        D4 n1 n2 n3 n4 ->
+            D4
+                (mapNode ops fn n1)
+                (mapNode ops fn n2)
+                (mapNode ops fn n3)
+                (mapNode ops fn n4)
+
+
+{-| Partition a Finger Tree based on some test. The first Finger Tree contains
+all values that satisfy the test, and the second list contains all the value that
+do not.
+-}
+partition : Ops e a -> (e -> Bool) -> FingerTree e a -> ( FingerTree e a, FingerTree e a )
+partition ops pred tree =
+    foldr
+        (\x ( yays, nays ) ->
+            if pred x then
+                ( leftCons ops x yays, nays )
+
+            else
+                ( yays, leftCons ops x nays )
+        )
+        ( empty, empty )
+        tree
+
+
+{-| Figure out whether the FingerTree contains a value.
+-}
+member : e -> FingerTree e a -> Bool
+member e tree =
+    case tree of
+        Empty ->
+            False
+
+        Single n ->
+            memberNode e n
+
+        Deep _ l m r ->
+            memberDigit e l || member e m || memberDigit e r
+
+
+memberNode : e -> Node e a -> Bool
+memberNode e node =
+    case node of
+        Tip e1 _ ->
+            e == e1
+
+        Node2 _ e1 e2 ->
+            memberNode e e1 || memberNode e e2
+
+        Node3 _ e1 e2 e3 ->
+            memberNode e e1 || memberNode e e2 || memberNode e e3
+
+
+memberDigit : e -> Digit e a -> Bool
+memberDigit e digit =
+    case digit of
+        D1 n1 ->
+            memberNode e n1
+
+        D2 n1 n2 ->
+            memberNode e n1 || memberNode e n2
+
+        D3 n1 n2 n3 ->
+            memberNode e n1 || memberNode e n2 || memberNode e n3
+
+        D4 n1 n2 n3 n4 ->
+            memberNode e n1 || memberNode e n2 || memberNode e n3 || memberNode e n4
+
+
+{-| Initialize an array. `initialize n f` creates an array of length `n` with the
+element at index `i` initialized to the result of `(f i)`.
+
+The numbers `i` will be in the range `0..(n-1)`.
+
+-}
+initialize : Ops e a -> Int -> (Int -> e) -> FingerTree e a
+initialize ops n toElement =
+    List.foldl
+        (\i acc -> rightCons ops (toElement i) acc)
+        empty
+        (List.range 0 (n - 1))
