@@ -170,6 +170,11 @@ After toList/fromList:
                             |> String.replace "{BEFORE}" (Debug.toString created)
                             |> String.replace "{AFTER}" (Debug.toString converted)
                         )
+        , Test.fuzz fingerTreeFuzzer "structuralInvariant" <|
+            \tree ->
+                FingerTree.structuralInvariant ops tree
+                    |> Expect.equal True
+                    |> Expect.onFail "Didn't hold structural invariant!"
         , Test.fuzz fingerTreeFuzzer "count == toList/length" <|
             \tree ->
                 FingerTree.count tree
