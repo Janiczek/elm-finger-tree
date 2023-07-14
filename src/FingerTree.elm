@@ -5,7 +5,7 @@ module FingerTree exposing
     , foldl, foldr
     , equals
     , isEmpty, count
-    , member
+    , member, all, any
     , leftUncons, rightUncons
     , head, tail, headR, tailR
     , split, partition
@@ -17,8 +17,6 @@ module FingerTree exposing
     -- TODO some of these will be only useful in FingerTree.Array etc.
     -- TODO range
     -- TODO indexedMap
-    -- TODO all
-    -- TODO any
     -- TODO maximum
     -- TODO minimum
     -- TODO sum
@@ -69,7 +67,7 @@ This implementation is ported from:
 
 @docs equals
 @docs isEmpty, count
-@docs member
+@docs member, all, any
 @docs leftUncons, rightUncons
 @docs head, tail, headR, tailR
 @docs split, partition
@@ -90,19 +88,6 @@ This implementation is ported from:
 -}
 
 
-type Node e ann
-    = Tip e ann
-    | Node2 ann (Node e ann) (Node e ann)
-    | Node3 ann (Node e ann) (Node e ann) (Node e ann)
-
-
-type Digit e ann
-    = D1 (Node e ann)
-    | D2 (Node e ann) (Node e ann)
-    | D3 (Node e ann) (Node e ann) (Node e ann)
-    | D4 (Node e ann) (Node e ann) (Node e ann) (Node e ann)
-
-
 {-| A Finger Tree structure.
 
 The `e` (short for "element") is the data you want the tree to hold.
@@ -116,6 +101,19 @@ type FingerTree e ann
     = Empty
     | Single (Node e ann)
     | Deep ann (Digit e ann) (FingerTree e ann) (Digit e ann)
+
+
+type Digit e ann
+    = D1 (Node e ann)
+    | D2 (Node e ann) (Node e ann)
+    | D3 (Node e ann) (Node e ann) (Node e ann)
+    | D4 (Node e ann) (Node e ann) (Node e ann) (Node e ann)
+
+
+type Node e ann
+    = Tip e ann
+    | Node2 ann (Node e ann) (Node e ann)
+    | Node3 ann (Node e ann) (Node e ann) (Node e ann)
 
 
 {-| Monoidal operations on the elements of the Finger Tree and their
@@ -1462,3 +1460,97 @@ repeat : Ops e ann -> Int -> e -> FingerTree e ann
 repeat ops n el =
     List.repeat n el
         |> fromList ops
+
+
+{-| Check if all values in the Finger Tree satisfy the predicate.
+
+Returns True when used with an empty list.
+
+-}
+all : (e -> Bool) -> FingerTree e ann -> Bool
+all pred tree =
+    case tree of
+        Empty ->
+            True
+
+        Single n ->
+            allNode pred n
+
+        Deep _ l m r ->
+            allDigit pred l && all pred m && allDigit pred r
+
+
+allNode : (e -> Bool) -> Node e ann -> Bool
+allNode pred node =
+    case node of
+        Tip e _ ->
+            pred e
+
+        Node2 _ n1 n2 ->
+            allNode pred n1 && allNode pred n2
+
+        Node3 _ n1 n2 n3 ->
+            allNode pred n1 && allNode pred n2 && allNode pred n3
+
+
+allDigit : (e -> Bool) -> Digit e ann -> Bool
+allDigit pred digit =
+    case digit of
+        D1 n1 ->
+            allNode pred n1
+
+        D2 n1 n2 ->
+            allNode pred n1 && allNode pred n2
+
+        D3 n1 n2 n3 ->
+            allNode pred n1 && allNode pred n2 && allNode pred n3
+
+        D4 n1 n2 n3 n4 ->
+            allNode pred n1 && allNode pred n2 && allNode pred n3 && allNode pred n4
+
+
+{-| Check if any values in the Finger Tree satisfy the predicate.
+
+Returns False when used with an empty list.
+
+-}
+any : (e -> Bool) -> FingerTree e ann -> Bool
+any pred tree =
+    case tree of
+        Empty ->
+            True
+
+        Single n ->
+            anyNode pred n
+
+        Deep _ l m r ->
+            anyDigit pred l || any pred m || anyDigit pred r
+
+
+anyNode : (e -> Bool) -> Node e ann -> Bool
+anyNode pred node =
+    case node of
+        Tip e _ ->
+            pred e
+
+        Node2 _ n1 n2 ->
+            anyNode pred n1 || anyNode pred n2
+
+        Node3 _ n1 n2 n3 ->
+            anyNode pred n1 || anyNode pred n2 || anyNode pred n3
+
+
+anyDigit : (e -> Bool) -> Digit e ann -> Bool
+anyDigit pred digit =
+    case digit of
+        D1 n1 ->
+            anyNode pred n1
+
+        D2 n1 n2 ->
+            anyNode pred n1 || anyNode pred n2
+
+        D3 n1 n2 n3 ->
+            anyNode pred n1 || anyNode pred n2 || anyNode pred n3
+
+        D4 n1 n2 n3 n4 ->
+            anyNode pred n1 || anyNode pred n2 || anyNode pred n3 || anyNode pred n4

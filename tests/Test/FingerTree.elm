@@ -26,7 +26,7 @@ fingerTreeCreationRecipe =
             [ Fuzz.constant Empty
             , Fuzz.map Singleton Fuzz.int
             , Fuzz.map FromList (Fuzz.list Fuzz.int)
-            , Fuzz.map InitializeTimesThreeMod7 (Fuzz.intRange 0 10)
+            , Fuzz.map Initialize (Fuzz.intRange 0 10)
             , Fuzz.map2 Repeat (Fuzz.intRange 0 10) Fuzz.int
             ]
         )
@@ -39,9 +39,9 @@ fingerTreeCreationRecipe =
                 , Fuzz.map TakeUntilNth Fuzz.int
                 , Fuzz.map DropUntilNth Fuzz.int
                 , Fuzz.constant Reverse
-                , Fuzz.map MapTimes Fuzz.int
-                , Fuzz.map FilterLessThan Fuzz.int
-                , Fuzz.map2 FilterMapTimesLessThan Fuzz.int Fuzz.int
+                , Fuzz.map Map Fuzz.int
+                , Fuzz.map Filter Fuzz.int
+                , Fuzz.map2 FilterMap Fuzz.int Fuzz.int
                 ]
             )
         )
@@ -51,7 +51,7 @@ type CreateVia
     = Empty
     | Singleton Int
     | FromList (List Int)
-    | InitializeTimesThreeMod7 Int
+    | Initialize Int
     | Repeat Int Int
 
 
@@ -63,9 +63,9 @@ type UpdateVia
     | TakeUntilNth Int
     | DropUntilNth Int
     | Reverse
-    | MapTimes Int
-    | FilterLessThan Int
-    | FilterMapTimesLessThan Int Int
+    | Map Int
+    | Filter Int
+    | FilterMap Int Int
 
 
 create : CreateVia -> FingerTree Int Int
@@ -80,7 +80,7 @@ create via =
         FromList ns ->
             FingerTree.fromList ops ns
 
-        InitializeTimesThreeMod7 n ->
+        Initialize n ->
             FingerTree.initialize ops n (\i -> (i * 3) |> modBy 7)
 
         Repeat times x ->
@@ -111,13 +111,13 @@ update via tree =
         Reverse ->
             FingerTree.reverse ops tree
 
-        MapTimes n ->
+        Map n ->
             FingerTree.map ops ((*) n) tree
 
-        FilterLessThan n ->
+        Filter n ->
             FingerTree.filter ops (\x -> x < n) tree
 
-        FilterMapTimesLessThan k n ->
+        FilterMap k n ->
             FingerTree.filterMap ops
                 (\x ->
                     if x < n then
@@ -468,4 +468,6 @@ After toList/fromList:
                         (List.range 0 (n - 1)
                             |> List.map ((*) 2)
                         )
+        , Test.todo "all"
+        , Test.todo "any"
         ]
