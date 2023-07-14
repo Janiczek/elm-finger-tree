@@ -234,9 +234,39 @@ After toList/fromList:
                         FingerTree.isEmpty tree
                             |> Expect.equal False
                             |> Expect.onFail "Tree with count non-0 was empty!"
-        , Test.todo "leftUncons"
-        , Test.todo "rightUncons"
-        , Test.todo "head"
+        , Test.fuzz fingerTreeFuzzer "leftUncons/leftCons" <|
+            \tree ->
+                case FingerTree.leftUncons ops tree of
+                    Nothing ->
+                        Expect.pass
+
+                    Just ( e, tree2 ) ->
+                        FingerTree.leftCons ops e tree2
+                            |> FingerTree.toList
+                            |> Expect.equalLists (FingerTree.toList tree)
+        , Test.fuzz fingerTreeFuzzer "rightUncons/rightCons" <|
+            \tree ->
+                case FingerTree.rightUncons ops tree of
+                    Nothing ->
+                        Expect.pass
+
+                    Just ( e, tree2 ) ->
+                        FingerTree.rightCons ops e tree2
+                            |> FingerTree.toList
+                            |> Expect.equalLists (FingerTree.toList tree)
+        , Test.fuzz2 Fuzz.int fingerTreeFuzzer "head/leftCons" <|
+            \x tree ->
+                FingerTree.leftCons ops x tree
+                    |> FingerTree.head ops
+                    |> Expect.equal (Just x)
+        , Test.fuzz fingerTreeFuzzer "head/List.head" <|
+            \tree ->
+                FingerTree.head ops tree
+                    |> Expect.equal
+                        (tree
+                            |> FingerTree.toList
+                            |> List.head
+                        )
         , Test.todo "tail"
         , Test.todo "headR"
         , Test.todo "tailR"

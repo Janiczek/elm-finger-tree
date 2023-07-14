@@ -656,14 +656,14 @@ rightmostNode ops tree =
 O(log(n)), O(1) amortized
 
 -}
-leftUncons : Ops e a -> FingerTree e a -> Maybe ( ( e, a ), FingerTree e a )
+leftUncons : Ops e a -> FingerTree e a -> Maybe ( e, FingerTree e a )
 leftUncons ops tree =
     case leftmostNode ops tree of
         Nothing ->
             Nothing
 
-        Just ( Tip e a, t ) ->
-            Just ( ( e, a ), t )
+        Just ( Tip e _, t ) ->
+            Just ( e, t )
 
         Just _ ->
             -- This is not obvious to me: do we never encounter Node2 and Node3?
@@ -676,14 +676,14 @@ leftUncons ops tree =
 O(log(n)), O(1) amortized
 
 -}
-rightUncons : Ops e a -> FingerTree e a -> Maybe ( ( e, a ), FingerTree e a )
+rightUncons : Ops e a -> FingerTree e a -> Maybe ( e, FingerTree e a )
 rightUncons ops tree =
     case rightmostNode ops tree of
         Nothing ->
             Nothing
 
-        Just ( Tip e a, t ) ->
-            Just ( ( e, a ), t )
+        Just ( Tip e _, t ) ->
+            Just ( e, t )
 
         Just _ ->
             -- This is not obvious to me: do we never encounter Node2 and Node3?
@@ -706,7 +706,7 @@ isEmpty tree =
 O(log(n))
 
 -}
-head : Ops e a -> FingerTree e a -> Maybe ( e, a )
+head : Ops e a -> FingerTree e a -> Maybe e
 head ops tree =
     leftUncons ops tree
         |> Maybe.map Tuple.first
@@ -728,7 +728,7 @@ tail ops tree =
 O(log(n))
 
 -}
-headR : Ops e a -> FingerTree e a -> Maybe ( e, a )
+headR : Ops e a -> FingerTree e a -> Maybe e
 headR ops tree =
     rightUncons ops tree
         |> Maybe.map Tuple.first
