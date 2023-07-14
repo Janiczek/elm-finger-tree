@@ -542,20 +542,25 @@ fromList ops list =
         list
 
 
-digitToTree : Ops e a -> Digit e a -> FingerTree e a
+digitToTree : Ops e a -> Maybe (Digit e a) -> FingerTree e a
 digitToTree ops digit =
     case digit of
-        D1 n1 ->
-            Single n1
+        Nothing ->
+            Empty
 
-        D2 n1 n2 ->
-            deep ops (D1 n1) Empty (D1 n2)
+        Just digit_ ->
+            case digit_ of
+                D1 n1 ->
+                    Single n1
 
-        D3 n1 n2 n3 ->
-            deep ops (D2 n1 n2) Empty (D1 n3)
+                D2 n1 n2 ->
+                    deep ops (D1 n1) Empty (D1 n2)
 
-        D4 n1 n2 n3 n4 ->
-            deep ops (D2 n1 n2) Empty (D2 n3 n4)
+                D3 n1 n2 n3 ->
+                    deep ops (D2 n1 n2) Empty (D1 n3)
+
+                D4 n1 n2 n3 n4 ->
+                    deep ops (D2 n1 n2) Empty (D2 n3 n4)
 
 
 nodeToDigit : Node e a -> Digit e a
@@ -613,7 +618,7 @@ leftmostNode ops tree =
         Deep _ (D1 n1) m r ->
             case leftmostNode ops m of
                 Nothing ->
-                    Just ( n1, digitToTree ops r )
+                    Just ( n1, digitToTree ops (Just r) )
 
                 Just ( n2, m2 ) ->
                     Just ( n1, deep ops (nodeToDigit n2) m2 r )
@@ -645,7 +650,7 @@ rightmostNode ops tree =
         Deep _ l m (D1 n1) ->
             case rightmostNode ops m of
                 Nothing ->
-                    Just ( n1, digitToTree ops l )
+                    Just ( n1, digitToTree ops (Just l) )
 
                 Just ( n2, m2 ) ->
                     Just ( n1, deep ops l m2 (nodeToDigit n2) )
@@ -830,7 +835,7 @@ deepL ops l m r =
         Nothing ->
             case leftmostNode ops m of
                 Nothing ->
-                    digitToTree ops r
+                    digitToTree ops (Just r)
 
                 Just ( a, m2 ) ->
                     deep ops (nodeToDigit a) m2 r
@@ -845,7 +850,7 @@ deepR ops l m r =
         Nothing ->
             case rightmostNode ops m of
                 Nothing ->
-                    digitToTree ops l
+                    digitToTree ops (Just l)
 
                 Just ( a, m2 ) ->
                     deep ops l m2 (nodeToDigit a)
@@ -862,6 +867,12 @@ O(log(min(i,n-i)))
 For predictable results, ensure there is only one such point, ie. that
 the predicate is monotonic.
 
+LOW-LEVEL WARNING:
+
+Note this predicate works on the annotations (measures), not on the values!
+What this annotation is is specific to the given Finger Tree usage, and is what
+allows efficient operations for eg. random access or the priority queue behaviour.
+
 -}
 split :
     Ops e a
@@ -872,9 +883,16 @@ split ops pred tree =
     if isEmpty tree then
         ( Empty, Empty )
 
+    else if pred ops.empty then
+        ( Empty, tree )
+
     else if pred (annotation ops tree) then
         case splitTree ops pred ops.empty tree of
             Nothing ->
+                let
+                    _ =
+                        Debug.log "huh, what happened?" ()
+                in
                 ( Empty, Empty )
 
             Just ( l, ( e, _ ), r ) ->
@@ -908,7 +926,12 @@ dropUntil ops pred tree =
         |> Tuple.second
 
 
-splitTree : Ops e a -> (a -> Bool) -> a -> FingerTree e a -> Maybe ( FingerTree e a, ( e, a ), FingerTree e a )
+splitTree :
+    Ops e a
+    -> (a -> Bool)
+    -> a
+    -> FingerTree e a
+    -> Maybe ( FingerTree e a, ( e, a ), FingerTree e a )
 splitTree ops pred i tree =
     case tree of
         Empty ->
@@ -920,24 +943,29 @@ splitTree ops pred i tree =
 
         Deep _ l m r ->
             let
+                _ =
+                    Debug.log "deep" { l = l, m = m, r = r }
+            in
+            let
                 vl : a
                 vl =
-                    ops.add i (digitAnnotation ops l)
+                    ops.add i (Debug.log "digit ann" (digitAnnotation ops l))
+                        |> Debug.log "vl"
             in
-            if pred vl then
+            if Debug.log "pred vl" <| pred vl then
                 let
                     ( ll, x, rr ) =
                         splitDigit ops pred i l
+                            |> Debug.log "split digit result"
                 in
-                Maybe.map2
-                    (\lll ( e, a ) ->
-                        ( digitToTree ops lll
-                        , ( e, a )
-                        , deepL ops rr m r
+                Debug.log "unwrap" (unwrapNode x)
+                    |> Maybe.map
+                        (\( e, a ) ->
+                            ( digitToTree ops ll
+                            , ( e, a )
+                            , deepL ops rr m r
+                            )
                         )
-                    )
-                    ll
-                    (unwrapNode x)
 
             else
                 let
@@ -965,15 +993,14 @@ splitTree ops pred i tree =
                         ( ll, x, rr ) =
                             splitDigit ops pred vm r
                     in
-                    Maybe.map2
-                        (\rrr ( e, a ) ->
-                            ( deepR ops l m ll
-                            , ( e, a )
-                            , digitToTree ops rrr
+                    unwrapNode x
+                        |> Maybe.map
+                            (\( e, a ) ->
+                                ( deepR ops l m ll
+                                , ( e, a )
+                                , digitToTree ops rr
+                                )
                             )
-                        )
-                        rr
-                        (unwrapNode x)
 
 
 unwrapNode : Node e a -> Maybe ( e, a )
@@ -1033,7 +1060,7 @@ splitNode ops pred i node =
 
 splitDigit : Ops e a -> (a -> Bool) -> a -> Digit e a -> ( Maybe (Digit e a), Node e a, Maybe (Digit e a) )
 splitDigit ops pred i digit =
-    case digit of
+    case Debug.log "split digit" digit of
         D1 n1 ->
             ( Nothing, n1, Nothing )
 

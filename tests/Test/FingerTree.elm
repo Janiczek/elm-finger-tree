@@ -267,10 +267,83 @@ After toList/fromList:
                             |> FingerTree.toList
                             |> List.head
                         )
-        , Test.todo "tail"
-        , Test.todo "headR"
-        , Test.todo "tailR"
-        , Test.todo "split"
+        , Test.fuzz2 Fuzz.int (Fuzz.list Fuzz.int) "tail" <|
+            \x xs ->
+                FingerTree.fromList ops (x :: xs)
+                    |> FingerTree.tail ops
+                    |> Maybe.map FingerTree.toList
+                    |> Expect.equal (Just xs)
+        , Test.fuzz2 Fuzz.int fingerTreeFuzzer "headR/rightCons" <|
+            \x tree ->
+                FingerTree.rightCons ops x tree
+                    |> FingerTree.headR ops
+                    |> Expect.equal (Just x)
+        , Test.fuzz fingerTreeFuzzer "headR/List.last" <|
+            \tree ->
+                FingerTree.headR ops tree
+                    |> Expect.equal
+                        (tree
+                            |> FingerTree.toList
+                            |> List.reverse
+                            |> List.head
+                        )
+        , Test.fuzz2 Fuzz.int (Fuzz.list Fuzz.int) "tailR" <|
+            \x xs ->
+                FingerTree.fromList ops (xs ++ [ x ])
+                    |> FingerTree.tailR ops
+                    |> Maybe.map FingerTree.toList
+                    |> Expect.equal (Just xs)
+        , Test.fuzz fingerTreeFuzzer "split (0,+,const 1) (x >= 5) -> left has 5 items" <|
+            \tree ->
+                if FingerTree.count tree >= 5 then
+                    tree
+                        |> FingerTree.split ops (\a -> a >= 5)
+                        |> Tuple.first
+                        |> FingerTree.count
+                        |> Expect.equal 5
+
+                else
+                    Expect.pass
+        , Test.only <|
+            Test.test "split example" <|
+                \() ->
+                    [ 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 ]
+                        |> FingerTree.fromList ops
+                        |> FingerTree.split ops (\a -> a >= 5)
+                        |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                        |> Expect.equal ( [ 10, 20, 30, 40, 50 ], [ 60, 70, 80, 90, 100 ] )
+        , Test.test "split empty" <|
+            \() ->
+                FingerTree.empty
+                    |> FingerTree.split ops (\a -> a >= 5)
+                    |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                    |> Expect.equal ( [], [] )
+        , Test.test "split always-false" <|
+            \() ->
+                List.range 1 10
+                    |> FingerTree.fromList ops
+                    |> FingerTree.split ops (always False)
+                    |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                    |> Expect.equal ( List.range 1 10, [] )
+        , Test.test "split always-true" <|
+            \() ->
+                List.range 1 10
+                    |> FingerTree.fromList ops
+                    |> FingerTree.split ops (always True)
+                    |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                    |> Expect.equal ( [], List.range 1 10 )
+        , Test.test "split single item into False (left) bucket" <|
+            \() ->
+                FingerTree.fromList ops [ 10 ]
+                    |> FingerTree.split ops (always False)
+                    |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                    |> Expect.equal ( [ 10 ], [] )
+        , Test.test "split single item into True (right) bucket" <|
+            \() ->
+                FingerTree.fromList ops [ 10 ]
+                    |> FingerTree.split ops (always True)
+                    |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                    |> Expect.equal ( [], [ 10 ] )
         , Test.fuzz2 Fuzz.int fingerTreeFuzzer "leftCons/left append singleton" <|
             \n tree ->
                 tree
