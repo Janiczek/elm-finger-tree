@@ -338,6 +338,23 @@ After toList/fromList:
                     |> FingerTree.split ops (always True)
                     |> Tuple.mapBoth FingerTree.toList FingerTree.toList
                     |> Expect.equal ( [], [ 10 ] )
+        , Test.fuzz fingerTreeFuzzer "takeUntil/dropUntil/split" <|
+            \tree ->
+                let
+                    fn =
+                        \n -> n >= 5
+
+                    ( l, r ) =
+                        FingerTree.split ops fn tree
+                in
+                ( FingerTree.takeUntil ops fn tree
+                , FingerTree.dropUntil ops fn tree
+                )
+                    |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                    |> Expect.equal
+                        (( l, r )
+                            |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                        )
         , Test.fuzz2 Fuzz.int fingerTreeFuzzer "leftCons/left append singleton" <|
             \n tree ->
                 tree
@@ -378,8 +395,6 @@ After toList/fromList:
                     |> FingerTree.toList
                     |> Expect.equalLists
                         (FingerTree.toList left ++ FingerTree.toList right)
-        , Test.todo "takeUntil"
-        , Test.todo "dropUntil"
         , Test.fuzz fingerTreeFuzzer "reverse/toList/List.reverse" <|
             \tree ->
                 tree
