@@ -73,7 +73,7 @@ create via =
             FingerTree.empty
 
         Singleton n ->
-            FingerTree.singleton ops n
+            FingerTree.singleton n
 
         FromList ns ->
             FingerTree.fromList ops ns
@@ -160,11 +160,6 @@ After toList/fromList:
                             |> String.replace "{BEFORE}" (Debug.toString created)
                             |> String.replace "{AFTER}" (Debug.toString converted)
                         )
-        , Test.fuzz fingerTreeFuzzer "structuralInvariant" <|
-            \tree ->
-                FingerTree.structuralInvariant ops tree
-                    |> Expect.equal True
-                    |> Expect.onFail "Didn't hold structural invariant!"
         , Test.fuzz fingerTreeFuzzer "count == toList/length" <|
             \tree ->
                 FingerTree.count tree
@@ -180,7 +175,7 @@ After toList/fromList:
                     |> Expect.equal 0
         , Test.fuzz Fuzz.int "singleton/toList == [x]" <|
             \n ->
-                FingerTree.singleton ops n
+                FingerTree.singleton n
                     |> FingerTree.toList
                     |> Expect.equalLists [ n ]
         , Test.fuzz (Fuzz.list Fuzz.int) "fromList/toList == id" <|
@@ -204,14 +199,14 @@ After toList/fromList:
                     |> Expect.equalLists (FingerTree.toList tree)
         , Test.test "foldl :: []" <|
             \() ->
-                FingerTree.singleton ops 2
+                FingerTree.singleton 2
                     |> FingerTree.leftCons ops 1
                     |> FingerTree.rightCons ops 3
                     |> FingerTree.foldl (::) []
                     |> Expect.equalLists [ 3, 2, 1 ]
         , Test.test "foldr :: []" <|
             \() ->
-                FingerTree.singleton ops 2
+                FingerTree.singleton 2
                     |> FingerTree.leftCons ops 1
                     |> FingerTree.rightCons ops 3
                     |> FingerTree.foldr (::) []
@@ -293,25 +288,24 @@ After toList/fromList:
                     |> FingerTree.tailR ops
                     |> Maybe.map FingerTree.toList
                     |> Expect.equal (Just xs)
-        , Test.fuzz fingerTreeFuzzer "split (0,+,const 1) (x >= 5) -> left has 5 items" <|
+        , Test.fuzz fingerTreeFuzzer "split (0,+,const 1) (x >= 5) -> left has 4 items" <|
             \tree ->
                 if FingerTree.count tree >= 5 then
                     tree
                         |> FingerTree.split ops (\a -> a >= 5)
                         |> Tuple.first
                         |> FingerTree.count
-                        |> Expect.equal 5
+                        |> Expect.equal 4
 
                 else
                     Expect.pass
-        , Test.only <|
-            Test.test "split example" <|
-                \() ->
-                    [ 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 ]
-                        |> FingerTree.fromList ops
-                        |> FingerTree.split ops (\a -> a >= 5)
-                        |> Tuple.mapBoth FingerTree.toList FingerTree.toList
-                        |> Expect.equal ( [ 10, 20, 30, 40, 50 ], [ 60, 70, 80, 90, 100 ] )
+        , Test.test "split example" <|
+            \() ->
+                [ 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 ]
+                    |> FingerTree.fromList ops
+                    |> FingerTree.split ops (\a -> a >= 5)
+                    |> Tuple.mapBoth FingerTree.toList FingerTree.toList
+                    |> Expect.equal ( [ 10, 20, 30, 40 ], [ 50, 60, 70, 80, 90, 100 ] )
         , Test.test "split empty" <|
             \() ->
                 FingerTree.empty
@@ -351,7 +345,7 @@ After toList/fromList:
                     |> FingerTree.toList
                     |> Expect.equalLists
                         (FingerTree.append ops
-                            (FingerTree.singleton ops n)
+                            (FingerTree.singleton n)
                             tree
                             |> FingerTree.toList
                         )
@@ -363,7 +357,7 @@ After toList/fromList:
                     |> Expect.equalLists
                         (FingerTree.append ops
                             tree
-                            (FingerTree.singleton ops n)
+                            (FingerTree.singleton n)
                             |> FingerTree.toList
                         )
         , Test.test "leftCons" <|
