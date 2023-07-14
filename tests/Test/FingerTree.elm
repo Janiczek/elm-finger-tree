@@ -42,6 +42,7 @@ fingerTreeCreationRecipe =
                 , Fuzz.map Map Fuzz.int
                 , Fuzz.map Filter Fuzz.int
                 , Fuzz.map2 FilterMap Fuzz.int Fuzz.int
+                , Fuzz.map IndexedMap Fuzz.int
                 ]
             )
         )
@@ -66,6 +67,7 @@ type UpdateVia
     | Map Int
     | Filter Int
     | FilterMap Int Int
+    | IndexedMap Int
 
 
 create : CreateVia -> FingerTree Int Int
@@ -127,6 +129,9 @@ update via tree =
                         Nothing
                 )
                 tree
+
+        IndexedMap n ->
+            FingerTree.indexedMap ops (\i x -> i + x * n) tree
 
 
 suite : Test
@@ -470,4 +475,5 @@ After toList/fromList:
                         )
         , Test.todo "all"
         , Test.todo "any"
+        , Test.todo "indexedMap"
         ]

@@ -12,11 +12,10 @@ module FingerTree exposing
     , leftCons, rightCons, append
     , takeUntil, dropUntil
     , reverse
-    , map, filter, filterMap
+    , map, filter, filterMap, indexedMap
     , structuralInvariant
     -- TODO some of these will be only useful in FingerTree.Array etc.
     -- TODO range
-    -- TODO indexedMap
     -- TODO maximum
     -- TODO minimum
     -- TODO sum
@@ -78,7 +77,7 @@ This implementation is ported from:
 @docs leftCons, rightCons, append
 @docs takeUntil, dropUntil
 @docs reverse
-@docs map, filter, filterMap
+@docs map, filter, filterMap, indexedMap
 
 
 ## Testing
@@ -1376,6 +1375,127 @@ mapDigit ops fn digit =
                 (mapNode ops fn n2)
                 (mapNode ops fn n3)
                 (mapNode ops fn n4)
+
+
+{-| Apply a function to every element of a list and its index.
+-}
+indexedMap : Ops e2 a2 -> (Int -> e1 -> e2) -> FingerTree e1 a1 -> FingerTree e2 a2
+indexedMap ops fn tree =
+    indexedMapTree ops fn 0 tree
+        |> Tuple.first
+
+
+indexedMapTree : Ops e2 a2 -> (Int -> e1 -> e2) -> Int -> FingerTree e1 a1 -> ( FingerTree e2 a2, Int )
+indexedMapTree ops fn i0 tree =
+    case tree of
+        Empty ->
+            ( Empty, i0 )
+
+        Single n ->
+            let
+                ( n_, i1 ) =
+                    indexedMapNode ops fn i0 n
+            in
+            ( Single n_, i1 )
+
+        Deep _ l m r ->
+            let
+                ( l_, i1 ) =
+                    indexedMapDigit ops fn i0 l
+
+                ( m_, i2 ) =
+                    indexedMapTree ops fn i1 m
+
+                ( r_, i3 ) =
+                    indexedMapDigit ops fn i2 r
+            in
+            ( deep ops l_ m_ r_, i3 )
+
+
+indexedMapNode : Ops e2 a2 -> (Int -> e1 -> e2) -> Int -> Node e1 a1 -> ( Node e2 a2, Int )
+indexedMapNode ops fn i0 node =
+    case node of
+        Tip e _ ->
+            let
+                e_ =
+                    fn i0 e
+            in
+            ( Tip e_ (ops.fromElement e_)
+            , i0 + 1
+            )
+
+        Node2 _ n1 n2 ->
+            let
+                ( n1_, i1 ) =
+                    indexedMapNode ops fn i0 n1
+
+                ( n2_, i2 ) =
+                    indexedMapNode ops fn i1 n2
+            in
+            ( node2 ops n1_ n2_, i2 )
+
+        Node3 _ n1 n2 n3 ->
+            let
+                ( n1_, i1 ) =
+                    indexedMapNode ops fn i0 n1
+
+                ( n2_, i2 ) =
+                    indexedMapNode ops fn i1 n2
+
+                ( n3_, i3 ) =
+                    indexedMapNode ops fn i2 n3
+            in
+            ( node3 ops n1_ n2_ n3_, i3 )
+
+
+indexedMapDigit : Ops e2 a2 -> (Int -> e1 -> e2) -> Int -> Digit e1 a1 -> ( Digit e2 a2, Int )
+indexedMapDigit ops fn i0 digit =
+    case digit of
+        D1 n1 ->
+            let
+                ( n1_, i1 ) =
+                    indexedMapNode ops fn i0 n1
+            in
+            ( D1 n1_, i1 )
+
+        D2 n1 n2 ->
+            let
+                ( n1_, i1 ) =
+                    indexedMapNode ops fn i0 n1
+
+                ( n2_, i2 ) =
+                    indexedMapNode ops fn i1 n2
+            in
+            ( D2 n1_ n2_, i2 )
+
+        D3 n1 n2 n3 ->
+            let
+                ( n1_, i1 ) =
+                    indexedMapNode ops fn i0 n1
+
+                ( n2_, i2 ) =
+                    indexedMapNode ops fn i1 n2
+
+                ( n3_, i3 ) =
+                    indexedMapNode ops fn i2 n3
+            in
+            ( D3 n1_ n2_ n3_, i3 )
+
+        D4 n1 n2 n3 n4 ->
+            let
+                ( n1_, i1 ) =
+                    indexedMapNode ops fn i0 n1
+
+                ( n2_, i2 ) =
+                    indexedMapNode ops fn i1 n2
+
+                ( n3_, i3 ) =
+                    indexedMapNode ops fn i2 n3
+
+                ( n4_, i4 ) =
+                    indexedMapNode ops fn i3 n4
+            in
+            ( D4 n1_ n2_ n3_ n4_, i4 )
 
 
 {-| Partition a Finger Tree based on some test. The first Finger Tree contains
