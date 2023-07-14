@@ -91,17 +91,17 @@ This implementation is ported from:
 -}
 
 
-type Node e a
-    = Tip e a
-    | Node2 a (Node e a) (Node e a)
-    | Node3 a (Node e a) (Node e a) (Node e a)
+type Node e ann
+    = Tip e ann
+    | Node2 ann (Node e ann) (Node e ann)
+    | Node3 ann (Node e ann) (Node e ann) (Node e ann)
 
 
-type Digit e a
-    = D1 (Node e a)
-    | D2 (Node e a) (Node e a)
-    | D3 (Node e a) (Node e a) (Node e a)
-    | D4 (Node e a) (Node e a) (Node e a) (Node e a)
+type Digit e ann
+    = D1 (Node e ann)
+    | D2 (Node e ann) (Node e ann)
+    | D3 (Node e ann) (Node e ann) (Node e ann)
+    | D4 (Node e ann) (Node e ann) (Node e ann) (Node e ann)
 
 
 {-| A Finger Tree structure.
@@ -113,37 +113,37 @@ would be an Int; each element would have measure 1, and recursive internal
 nodes would each have measure of the sum of the items inside.
 
 -}
-type FingerTree e a
+type FingerTree e ann
     = Empty
-    | Single (Node e a)
-    | Deep a (Digit e a) (FingerTree e a) (Digit e a)
+    | Single (Node e ann)
+    | Deep ann (Digit e ann) (FingerTree e ann) (Digit e ann)
 
 
 {-| Monoidal operations on the elements of the Finger Tree and their
 annotations.
 -}
-type alias Ops e a =
-    { empty : a
-    , add : a -> a -> a
-    , fromElement : e -> a
+type alias Ops e ann =
+    { empty : ann
+    , add : ann -> ann -> ann
+    , fromElement : e -> ann
     }
 
 
-nodeAnnotation : Node e a -> a
+nodeAnnotation : Node e ann -> ann
 nodeAnnotation node =
     -- Named `gmn` in the Isabelle implementation.
     case node of
-        Tip _ a ->
-            a
+        Tip _ ann ->
+            ann
 
-        Node2 a _ _ ->
-            a
+        Node2 ann _ _ ->
+            ann
 
-        Node3 a _ _ _ ->
-            a
+        Node3 ann _ _ _ ->
+            ann
 
 
-digitAnnotation : Ops e a -> Digit e a -> a
+digitAnnotation : Ops e ann -> Digit e ann -> ann
 digitAnnotation { add } digit =
     -- Named `gmd` in the Isabelle implementation.
     case digit of
@@ -180,7 +180,7 @@ digitAnnotation { add } digit =
 O(1)
 
 -}
-annotation : Ops e a -> FingerTree e a -> a
+annotation : Ops e ann -> FingerTree e ann -> ann
 annotation ops tree =
     -- Named `gmft` in the Isabelle implementation.
     case tree of
@@ -190,20 +190,20 @@ annotation ops tree =
         Single n ->
             nodeAnnotation n
 
-        Deep a _ _ _ ->
-            a
+        Deep ann _ _ _ ->
+            ann
 
 
 {-| The Isabelle implementation used this to prove correctness;
 we use it to property-test the port.
 -}
-structuralInvariant : Ops e a -> FingerTree e a -> Bool
+structuralInvariant : Ops e ann -> FingerTree e ann -> Bool
 structuralInvariant ops tree =
     -- Named `ft-invar` in the Isabelle implementation.
     isLevelNTree 0 tree && isMeasuredTree ops tree
 
 
-isLevelNNode : Int -> Node e a -> Bool
+isLevelNNode : Int -> Node e ann -> Bool
 isLevelNNode n node =
     case ( n, node ) of
         ( 0, Tip _ _ ) ->
@@ -222,7 +222,7 @@ isLevelNNode n node =
             False
 
 
-isLevelNDigit : Int -> Digit e a -> Bool
+isLevelNDigit : Int -> Digit e ann -> Bool
 isLevelNDigit n digit =
     case digit of
         D1 n1 ->
@@ -244,7 +244,7 @@ isLevelNDigit n digit =
                 && isLevelNNode n n4
 
 
-isLevelNTree : Int -> FingerTree e a -> Bool
+isLevelNTree : Int -> FingerTree e ann -> Bool
 isLevelNTree n tree =
     case tree of
         Empty ->
@@ -259,7 +259,7 @@ isLevelNTree n tree =
                 && isLevelNDigit n r
 
 
-isMeasuredNode : Ops e a -> Node e a -> Bool
+isMeasuredNode : Ops e ann -> Node e ann -> Bool
 isMeasuredNode ({ add } as ops) node =
     case node of
         Tip _ _ ->
@@ -288,7 +288,7 @@ isMeasuredNode ({ add } as ops) node =
                    )
 
 
-isMeasuredDigit : Ops e a -> Digit e a -> Bool
+isMeasuredDigit : Ops e ann -> Digit e ann -> Bool
 isMeasuredDigit ops digit =
     case digit of
         D1 n1 ->
@@ -310,7 +310,7 @@ isMeasuredDigit ops digit =
                 && isMeasuredNode ops n4
 
 
-isMeasuredTree : Ops e a -> FingerTree e a -> Bool
+isMeasuredTree : Ops e ann -> FingerTree e ann -> Bool
 isMeasuredTree ({ add } as ops) tree =
     case tree of
         Empty ->
@@ -333,7 +333,7 @@ isMeasuredTree ({ add } as ops) tree =
                    )
 
 
-nodeToList : Node e a -> List e
+nodeToList : Node e ann -> List e
 nodeToList node =
     case node of
         Tip e _ ->
@@ -346,7 +346,7 @@ nodeToList node =
             nodeToList n1 ++ nodeToList n2 ++ nodeToList n3
 
 
-digitToList : Digit e a -> List e
+digitToList : Digit e ann -> List e
 digitToList digit =
     case digit of
         D1 n1 ->
@@ -367,7 +367,7 @@ digitToList digit =
 O(n)
 
 -}
-toList : FingerTree e a -> List e
+toList : FingerTree e ann -> List e
 toList tree =
     case tree of
         Empty ->
@@ -385,7 +385,7 @@ toList tree =
 O(1)
 
 -}
-empty : FingerTree e a
+empty : FingerTree e ann
 empty =
     Empty
 
@@ -395,7 +395,7 @@ empty =
 O(1)
 
 -}
-singleton : Ops e a -> e -> FingerTree e a
+singleton : Ops e ann -> e -> FingerTree e ann
 singleton ops e =
     Single (Tip e (ops.fromElement e))
 
@@ -406,14 +406,14 @@ Using `==` for Finger Trees is not reliable, since there are multiple
 representations for the same conceptual value.
 
 -}
-equals : FingerTree e a -> FingerTree e a -> Bool
+equals : FingerTree e ann -> FingerTree e ann -> Bool
 equals tree1 tree2 =
     toList tree1 == toList tree2
 
 
 {-| Append a node at the left end.
 -}
-leftConsNode : Ops e a -> Node e a -> FingerTree e a -> FingerTree e a
+leftConsNode : Ops e ann -> Node e ann -> FingerTree e ann -> FingerTree e ann
 leftConsNode ops newNode tree =
     -- Recursively we append a node, if the digit is full we push down a Node3
     case tree of
@@ -438,7 +438,7 @@ leftConsNode ops newNode tree =
 
 {-| Append a node at the left end.
 -}
-rightConsNode : Ops e a -> Node e a -> FingerTree e a -> FingerTree e a
+rightConsNode : Ops e ann -> Node e ann -> FingerTree e ann -> FingerTree e ann
 rightConsNode ops newNode tree =
     -- Recursively we append a node, if the digit is full we push down a Node3
     case tree of
@@ -463,10 +463,10 @@ rightConsNode ops newNode tree =
 
 {-| A way to construct Deep while calculating the annotation correctly.
 -}
-deep : Ops e a -> Digit e a -> FingerTree e a -> Digit e a -> FingerTree e a
+deep : Ops e ann -> Digit e ann -> FingerTree e ann -> Digit e ann -> FingerTree e ann
 deep ({ add } as ops) l m r =
     let
-        ann : a
+        ann : ann
         ann =
             add
                 (digitAnnotation ops l)
@@ -480,10 +480,10 @@ deep ({ add } as ops) l m r =
 
 {-| A way to construct Node2 while calculating the annotation correctly.
 -}
-node2 : Ops e a -> Node e a -> Node e a -> Node e a
+node2 : Ops e ann -> Node e ann -> Node e ann -> Node e ann
 node2 { add } n1 n2 =
     let
-        ann : a
+        ann : ann
         ann =
             add
                 (nodeAnnotation n1)
@@ -494,10 +494,10 @@ node2 { add } n1 n2 =
 
 {-| A way to construct Node3 while calculating the annotation correctly.
 -}
-node3 : Ops e a -> Node e a -> Node e a -> Node e a -> Node e a
+node3 : Ops e ann -> Node e ann -> Node e ann -> Node e ann -> Node e ann
 node3 { add } n1 n2 n3 =
     let
-        ann : a
+        ann : ann
         ann =
             add
                 (nodeAnnotation n1)
@@ -514,7 +514,7 @@ node3 { add } n1 n2 n3 =
 O(log(n)), O(1) amortized
 
 -}
-leftCons : Ops e a -> e -> FingerTree e a -> FingerTree e a
+leftCons : Ops e ann -> e -> FingerTree e ann -> FingerTree e ann
 leftCons ops e tree =
     leftConsNode ops (Tip e (ops.fromElement e)) tree
 
@@ -524,9 +524,14 @@ leftCons ops e tree =
 O(log(n)), O(1) amortized
 
 -}
-rightCons : Ops e a -> e -> FingerTree e a -> FingerTree e a
+rightCons : Ops e ann -> e -> FingerTree e ann -> FingerTree e ann
 rightCons ops e tree =
     rightConsNode ops (Tip e (ops.fromElement e)) tree
+
+
+rightConsAll : Ops e ann -> List e -> FingerTree e ann -> FingerTree e ann
+rightConsAll ops es tree =
+    List.foldl (rightCons ops) tree es
 
 
 {-| Convert list to a Finger Tree.
@@ -534,7 +539,7 @@ rightCons ops e tree =
 O(n log(n)), O(n) amortized
 
 -}
-fromList : Ops e a -> List e -> FingerTree e a
+fromList : Ops e ann -> List e -> FingerTree e ann
 fromList ops list =
     List.foldr
         (\e acc -> leftCons ops e acc)
@@ -542,7 +547,7 @@ fromList ops list =
         list
 
 
-digitToTree : Ops e a -> Maybe (Digit e a) -> FingerTree e a
+digitToTree : Ops e ann -> Maybe (Digit e ann) -> FingerTree e ann
 digitToTree ops digit =
     case digit of
         Nothing ->
@@ -563,11 +568,11 @@ digitToTree ops digit =
                     deep ops (D2 n1 n2) Empty (D2 n3 n4)
 
 
-nodeToDigit : Node e a -> Digit e a
+nodeToDigit : Node e ann -> Digit e ann
 nodeToDigit node =
     case node of
-        Tip e a ->
-            D1 (Tip e a)
+        Tip e ann ->
+            D1 (Tip e ann)
 
         Node2 _ n1 n2 ->
             D2 n1 n2
@@ -576,7 +581,7 @@ nodeToDigit node =
             D3 n1 n2 n3
 
 
-digitToNodes : Digit e a -> List (Node e a)
+digitToNodes : Digit e ann -> List (Node e ann)
 digitToNodes digit =
     case digit of
         D1 n1 ->
@@ -597,7 +602,7 @@ digitToNodes digit =
 Called `viewLn` in the Isabelle implementation.
 
 -}
-leftmostNode : Ops e a -> FingerTree e a -> Maybe ( Node e a, FingerTree e a )
+leftmostNode : Ops e ann -> FingerTree e ann -> Maybe ( Node e ann, FingerTree e ann )
 leftmostNode ops tree =
     case tree of
         Empty ->
@@ -629,7 +634,7 @@ leftmostNode ops tree =
 Called `viewRn` in the Isabelle implementation.
 
 -}
-rightmostNode : Ops e a -> FingerTree e a -> Maybe ( Node e a, FingerTree e a )
+rightmostNode : Ops e ann -> FingerTree e ann -> Maybe ( Node e ann, FingerTree e ann )
 rightmostNode ops tree =
     case tree of
         Empty ->
@@ -661,19 +666,10 @@ rightmostNode ops tree =
 O(log(n)), O(1) amortized
 
 -}
-leftUncons : Ops e a -> FingerTree e a -> Maybe ( e, FingerTree e a )
+leftUncons : Ops e ann -> FingerTree e ann -> Maybe ( e, FingerTree e ann )
 leftUncons ops tree =
-    case leftmostNode ops tree of
-        Nothing ->
-            Nothing
-
-        Just ( Tip e _, t ) ->
-            Just ( e, t )
-
-        Just _ ->
-            -- This is not obvious to me: do we never encounter Node2 and Node3?
-            -- I guess this is where we lean on the Isabelle proofs :shrug:
-            Nothing
+    leftmostNode ops tree
+        |> Maybe.map (Tuple.mapFirst nodeUnwrap)
 
 
 {-| Detach the rightmost element.
@@ -681,19 +677,10 @@ leftUncons ops tree =
 O(log(n)), O(1) amortized
 
 -}
-rightUncons : Ops e a -> FingerTree e a -> Maybe ( e, FingerTree e a )
+rightUncons : Ops e ann -> FingerTree e ann -> Maybe ( e, FingerTree e ann )
 rightUncons ops tree =
-    case rightmostNode ops tree of
-        Nothing ->
-            Nothing
-
-        Just ( Tip e _, t ) ->
-            Just ( e, t )
-
-        Just _ ->
-            -- This is not obvious to me: do we never encounter Node2 and Node3?
-            -- I guess this is where we lean on the Isabelle proofs :shrug:
-            Nothing
+    rightmostNode ops tree
+        |> Maybe.map (Tuple.mapFirst nodeUnwrap)
 
 
 {-| Check whether the tree is empty.
@@ -701,7 +688,7 @@ rightUncons ops tree =
 O(1)
 
 -}
-isEmpty : FingerTree e a -> Bool
+isEmpty : FingerTree e ann -> Bool
 isEmpty tree =
     tree == Empty
 
@@ -711,7 +698,7 @@ isEmpty tree =
 O(log(n))
 
 -}
-head : Ops e a -> FingerTree e a -> Maybe e
+head : Ops e ann -> FingerTree e ann -> Maybe e
 head ops tree =
     leftUncons ops tree
         |> Maybe.map Tuple.first
@@ -722,7 +709,7 @@ head ops tree =
 O(log(n))
 
 -}
-tail : Ops e a -> FingerTree e a -> Maybe (FingerTree e a)
+tail : Ops e ann -> FingerTree e ann -> Maybe (FingerTree e ann)
 tail ops tree =
     leftUncons ops tree
         |> Maybe.map Tuple.second
@@ -733,7 +720,7 @@ tail ops tree =
 O(log(n))
 
 -}
-headR : Ops e a -> FingerTree e a -> Maybe e
+headR : Ops e ann -> FingerTree e ann -> Maybe e
 headR ops tree =
     rightUncons ops tree
         |> Maybe.map Tuple.first
@@ -744,26 +731,26 @@ headR ops tree =
 O(log(n))
 
 -}
-tailR : Ops e a -> FingerTree e a -> Maybe (FingerTree e a)
+tailR : Ops e ann -> FingerTree e ann -> Maybe (FingerTree e ann)
 tailR ops tree =
     rightUncons ops tree
         |> Maybe.map Tuple.second
 
 
-leftConsNodes : Ops e a -> List (Node e a) -> FingerTree e a -> FingerTree e a
+leftConsNodes : Ops e ann -> List (Node e ann) -> FingerTree e ann -> FingerTree e ann
 leftConsNodes ops nodes tree =
     List.foldr (leftConsNode ops) tree nodes
 
 
-rightConsNodes : Ops e a -> List (Node e a) -> FingerTree e a -> FingerTree e a
+rightConsNodes : Ops e ann -> List (Node e ann) -> FingerTree e ann -> FingerTree e ann
 rightConsNodes ops nodes tree =
     List.foldl (rightConsNode ops) tree nodes
 
 
-compactNodes : Ops e a -> List (Node e a) -> List (Node e a)
+compactNodes : Ops e ann -> List (Node e ann) -> List (Node e ann)
 compactNodes ops nodes =
     let
-        go : List (Node e a) -> List (Node e a) -> List (Node e a)
+        go : List (Node e ann) -> List (Node e ann) -> List (Node e ann)
         go todos acc =
             case todos of
                 [] ->
@@ -788,7 +775,7 @@ compactNodes ops nodes =
         |> List.reverse
 
 
-append3 : Ops e a -> FingerTree e a -> List (Node e a) -> FingerTree e a -> FingerTree e a
+append3 : Ops e ann -> FingerTree e ann -> List (Node e ann) -> FingerTree e ann -> FingerTree e ann
 append3 ops l xs r =
     case ( l, r ) of
         ( Empty, _ ) ->
@@ -824,36 +811,65 @@ append3 ops l xs r =
 O(log(m+n))
 
 -}
-append : Ops e a -> FingerTree e a -> FingerTree e a -> FingerTree e a
+append : Ops e ann -> FingerTree e ann -> FingerTree e ann -> FingerTree e ann
 append ops t1 t2 =
     append3 ops t1 [] t2
 
 
-deepL : Ops e a -> Maybe (Digit e a) -> FingerTree e a -> Digit e a -> FingerTree e a
+toDigit : List (Node e ann) -> Maybe (Digit e ann)
+toDigit es =
+    case es of
+        [ e1 ] ->
+            Just (D1 e1)
+
+        [ e1, e2 ] ->
+            Just (D2 e1 e2)
+
+        [ e1, e2, e3 ] ->
+            Just (D3 e1 e2 e3)
+
+        [ e1, e2, e3, e4 ] ->
+            Just (D4 e1 e2 e3 e4)
+
+        _ ->
+            Nothing
+
+
+deepL :
+    Ops e ann
+    -> List (Node e ann)
+    -> FingerTree e ann
+    -> Digit e ann
+    -> FingerTree e ann
 deepL ops l m r =
-    case l of
+    case toDigit l of
         Nothing ->
             case leftmostNode ops m of
                 Nothing ->
-                    digitToTree ops (Just r)
+                    rightConsAll ops (digitToList r) Empty
 
-                Just ( a, m2 ) ->
-                    deep ops (nodeToDigit a) m2 r
+                Just ( a, mm ) ->
+                    deep ops (nodeToDigit a) mm r
 
         Just ll ->
             deep ops ll m r
 
 
-deepR : Ops e a -> Digit e a -> FingerTree e a -> Maybe (Digit e a) -> FingerTree e a
+deepR :
+    Ops e ann
+    -> Digit e ann
+    -> FingerTree e ann
+    -> List (Node e ann)
+    -> FingerTree e ann
 deepR ops l m r =
-    case r of
+    case toDigit r of
         Nothing ->
             case rightmostNode ops m of
                 Nothing ->
-                    digitToTree ops (Just l)
+                    rightConsAll ops (digitToList l) Empty
 
-                Just ( a, m2 ) ->
-                    deep ops l m2 (nodeToDigit a)
+                Just ( a, mm ) ->
+                    deep ops l mm (nodeToDigit a)
 
         Just rr ->
             deep ops l m rr
@@ -875,10 +891,10 @@ allows efficient operations for eg. random access or the priority queue behaviou
 
 -}
 split :
-    Ops e a
-    -> (a -> Bool)
-    -> FingerTree e a
-    -> ( FingerTree e a, FingerTree e a )
+    Ops e ann
+    -> (ann -> Bool)
+    -> FingerTree e ann
+    -> ( FingerTree e ann, FingerTree e ann )
 split ops pred tree =
     if isEmpty tree then
         ( Empty, Empty )
@@ -889,17 +905,26 @@ split ops pred tree =
     else if pred (annotation ops tree) then
         case splitTree ops pred ops.empty tree of
             Nothing ->
-                let
-                    _ =
-                        Debug.log "huh, what happened?" ()
-                in
-                ( Empty, Empty )
+                impossible "Proven not to happen in the `isEmpty tree` condition above. We just can't forward that guarantee into the splitTree function without unergonomic new types."
 
-            Just ( l, ( e, _ ), r ) ->
-                ( l, leftCons ops e r )
+            Just ( l, x, r ) ->
+                ( l, leftConsNode ops x r )
 
     else
         ( tree, Empty )
+
+
+impossible : String -> a
+impossible reason =
+    let
+        overflowTheStack : Int -> Int
+        overflowTheStack x =
+            1 + overflowTheStack x
+
+        _ =
+            overflowTheStack 0
+    in
+    impossible reason
 
 
 {-| Given a monotonic predicate, returns the largest prefix that doesn't satisfy
@@ -908,7 +933,7 @@ the predicate.
 O(log(min(i,n-i)))
 
 -}
-takeUntil : Ops e a -> (a -> Bool) -> FingerTree e a -> FingerTree e a
+takeUntil : Ops e ann -> (ann -> Bool) -> FingerTree e ann -> FingerTree e ann
 takeUntil ops pred tree =
     split ops pred tree
         |> Tuple.first
@@ -920,215 +945,140 @@ prefix that doesn't satisfy the predicate.
 O(log(min(i,n-i)))
 
 -}
-dropUntil : Ops e a -> (a -> Bool) -> FingerTree e a -> FingerTree e a
+dropUntil : Ops e ann -> (ann -> Bool) -> FingerTree e ann -> FingerTree e ann
 dropUntil ops pred tree =
     split ops pred tree
         |> Tuple.second
 
 
 splitTree :
-    Ops e a
-    -> (a -> Bool)
-    -> a
-    -> FingerTree e a
-    -> Maybe ( FingerTree e a, ( e, a ), FingerTree e a )
+    Ops e ann
+    -> (ann -> Bool)
+    -> ann
+    -> FingerTree e ann
+    -> Maybe ( FingerTree e ann, Node e ann, FingerTree e ann )
 splitTree ops pred i tree =
     case tree of
         Empty ->
             Nothing
 
-        Single n ->
-            unwrapNode n
-                |> Maybe.map (\( e, a ) -> ( Empty, ( e, a ), Empty ))
+        Single e ->
+            Just ( Empty, e, Empty )
 
         Deep _ l m r ->
             let
-                _ =
-                    Debug.log "deep" { l = l, m = m, r = r }
-            in
-            let
-                vl : a
+                vl : ann
                 vl =
-                    ops.add i (Debug.log "digit ann" (digitAnnotation ops l))
-                        |> Debug.log "vl"
+                    ops.add i (digitAnnotation ops l)
             in
-            if Debug.log "pred vl" <| pred vl then
+            if pred vl then
                 let
                     ( ll, x, rr ) =
                         splitDigit ops pred i l
-                            |> Debug.log "split digit result"
                 in
-                Debug.log "unwrap" (unwrapNode x)
-                    |> Maybe.map
-                        (\( e, a ) ->
-                            ( digitToTree ops ll
-                            , ( e, a )
-                            , deepL ops rr m r
-                            )
-                        )
+                Just
+                    ( rightConsNodes ops ll Empty
+                    , x
+                    , deepL ops rr m r
+                    )
 
             else
                 let
-                    vm : a
+                    vm : ann
                     vm =
                         ops.add vl (annotation ops m)
                 in
                 if pred vm then
-                    case splitTree ops pred vl m of
+                    case splitTreeAlias ops pred vl m of
                         Nothing ->
                             Nothing
 
-                        Just ( ml, ( e, a ), mr ) ->
-                            splitNode ops pred (ops.add vl (annotation ops ml)) (Tip e a)
-                                |> Maybe.map
-                                    (\( ll, x, rr ) ->
-                                        ( deepR ops l ml ll
-                                        , x
-                                        , deepL ops rr mr r
-                                        )
-                                    )
+                        Just ( ml, xs, mr ) ->
+                            splitDigit ops pred (ops.add vl (annotation ops ml)) (nodeToDigit xs)
+                                |> (\( ll, x, rr ) ->
+                                        Just
+                                            ( deepR ops l ml ll
+                                            , x
+                                            , deepL ops rr mr r
+                                            )
+                                   )
 
                 else
-                    let
-                        ( ll, x, rr ) =
-                            splitDigit ops pred vm r
-                    in
-                    unwrapNode x
-                        |> Maybe.map
-                            (\( e, a ) ->
-                                ( deepR ops l m ll
-                                , ( e, a )
-                                , digitToTree ops rr
-                                )
-                            )
+                    splitDigit ops pred vm r
+                        |> (\( ll, x, rr ) ->
+                                Just
+                                    ( deepR ops l m ll
+                                    , x
+                                    , rightConsNodes ops rr Empty
+                                    )
+                           )
 
 
-unwrapNode : Node e a -> Maybe ( e, a )
-unwrapNode node =
+splitTreeAlias : Ops e ann -> (ann -> Bool) -> ann -> FingerTree e ann -> Maybe ( FingerTree e ann, Node e ann, FingerTree e ann )
+splitTreeAlias =
+    splitTree
+
+
+nodeUnwrap : Node e ann -> e
+nodeUnwrap node =
     case node of
-        Tip e a ->
-            Just ( e, a )
+        Tip e _ ->
+            e
 
         _ ->
-            Nothing
+            impossible "Proven not to happen in the Isabelle paper"
 
 
-splitNode : Ops e a -> (a -> Bool) -> a -> Node e a -> Maybe ( Maybe (Digit e a), ( e, a ), Maybe (Digit e a) )
-splitNode ops pred i node =
-    case node of
-        Tip e a ->
-            Just ( Nothing, ( e, a ), Nothing )
-
-        Node2 _ n1 n2 ->
-            let
-                va : a
-                va =
-                    ops.add i (nodeAnnotation n1)
-            in
-            if pred va then
-                unwrapNode n1
-                    |> Maybe.map (\( e, a ) -> ( Nothing, ( e, a ), Just (D1 n2) ))
-
-            else
-                unwrapNode n2
-                    |> Maybe.map (\( e, a ) -> ( Just (D1 n1), ( e, a ), Nothing ))
-
-        Node3 _ n1 n2 n3 ->
-            let
-                va : a
-                va =
-                    ops.add i (nodeAnnotation n1)
-            in
-            if pred va then
-                unwrapNode n1
-                    |> Maybe.map (\( e, a ) -> ( Nothing, ( e, a ), Just (D2 n2 n3) ))
-
-            else
-                let
-                    vb : a
-                    vb =
-                        ops.add va (nodeAnnotation n2)
-                in
-                if pred vb then
-                    unwrapNode n2
-                        |> Maybe.map (\( e, a ) -> ( Just (D1 n1), ( e, a ), Just (D1 n3) ))
-
-                else
-                    unwrapNode n3
-                        |> Maybe.map (\( e, a ) -> ( Just (D2 n1 n2), ( e, a ), Nothing ))
-
-
-splitDigit : Ops e a -> (a -> Bool) -> a -> Digit e a -> ( Maybe (Digit e a), Node e a, Maybe (Digit e a) )
+splitDigit : Ops e ann -> (ann -> Bool) -> ann -> Digit e ann -> ( List (Node e ann), Node e ann, List (Node e ann) )
 splitDigit ops pred i digit =
-    case Debug.log "split digit" digit of
+    case digit of
         D1 n1 ->
-            ( Nothing, n1, Nothing )
+            ( [], n1, [] )
 
         D2 n1 n2 ->
             let
-                va : a
-                va =
+                ii : ann
+                ii =
                     ops.add i (nodeAnnotation n1)
             in
-            if pred va then
-                ( Nothing, n1, Just (D1 n2) )
+            if pred ii then
+                ( [], n1, [ n2 ] )
 
             else
-                ( Just (D1 n1), n2, Nothing )
+                splitDigit ops pred ii (D1 n2)
+                    -- TODO is this e1::l correct or should it have been l++e1?
+                    |> (\( l, x, r ) -> ( n1 :: l, x, r ))
 
         D3 n1 n2 n3 ->
             let
-                va : a
-                va =
+                ii : ann
+                ii =
                     ops.add i (nodeAnnotation n1)
             in
-            if pred va then
-                ( Nothing, n1, Just (D2 n2 n3) )
+            if pred ii then
+                ( [], n1, [ n2, n3 ] )
 
             else
-                let
-                    vb : a
-                    vb =
-                        ops.add va (nodeAnnotation n2)
-                in
-                if pred vb then
-                    ( Just (D1 n1), n2, Just (D1 n3) )
-
-                else
-                    ( Just (D2 n1 n2), n3, Nothing )
+                splitDigit ops pred ii (D2 n2 n3)
+                    -- TODO is this e1::l correct or should it have been l++e1?
+                    |> (\( l, x, r ) -> ( n1 :: l, x, r ))
 
         D4 n1 n2 n3 n4 ->
             let
-                va : a
-                va =
+                ii : ann
+                ii =
                     ops.add i (nodeAnnotation n1)
             in
-            if pred va then
-                ( Nothing, n1, Just (D3 n2 n3 n4) )
+            if pred ii then
+                ( [], n1, [ n2, n3, n4 ] )
 
             else
-                let
-                    vb : a
-                    vb =
-                        ops.add va (nodeAnnotation n2)
-                in
-                if pred vb then
-                    ( Just (D1 n1), n2, Just (D2 n3 n4) )
-
-                else
-                    let
-                        vc : a
-                        vc =
-                            ops.add vb (nodeAnnotation n3)
-                    in
-                    if pred vc then
-                        ( Just (D2 n1 n2), n3, Just (D1 n4) )
-
-                    else
-                        ( Just (D3 n1 n2 n3), n4, Nothing )
+                splitDigit ops pred ii (D3 n2 n3 n4)
+                    -- TODO is this e1::l correct or should it have been l++e1?
+                    |> (\( l, x, r ) -> ( n1 :: l, x, r ))
 
 
-foldlNode : (e -> s -> s) -> s -> Node e a -> s
+foldlNode : (e -> s -> s) -> s -> Node e ann -> s
 foldlNode fn init node =
     case node of
         Tip e _ ->
@@ -1141,7 +1091,7 @@ foldlNode fn init node =
             foldlNode fn (foldlNode fn (foldlNode fn init n1) n2) n3
 
 
-foldrNode : (e -> s -> s) -> s -> Node e a -> s
+foldrNode : (e -> s -> s) -> s -> Node e ann -> s
 foldrNode fn init node =
     case node of
         Tip e _ ->
@@ -1154,7 +1104,7 @@ foldrNode fn init node =
             foldrNode fn (foldrNode fn (foldrNode fn init n3) n2) n1
 
 
-foldlDigit : (e -> s -> s) -> s -> Digit e a -> s
+foldlDigit : (e -> s -> s) -> s -> Digit e ann -> s
 foldlDigit fn init digit =
     case digit of
         D1 n1 ->
@@ -1170,7 +1120,7 @@ foldlDigit fn init digit =
             foldlNode fn (foldlNode fn (foldlNode fn (foldlNode fn init n1) n2) n3) n4
 
 
-foldrDigit : (e -> s -> s) -> s -> Digit e a -> s
+foldrDigit : (e -> s -> s) -> s -> Digit e ann -> s
 foldrDigit fn init digit =
     case digit of
         D1 n1 ->
@@ -1188,7 +1138,7 @@ foldrDigit fn init digit =
 
 {-| Fold with function from the left.
 -}
-foldl : (e -> s -> s) -> s -> FingerTree e a -> s
+foldl : (e -> s -> s) -> s -> FingerTree e ann -> s
 foldl fn init tree =
     case tree of
         Empty ->
@@ -1203,7 +1153,7 @@ foldl fn init tree =
 
 {-| Fold with function from the right.
 -}
-foldr : (e -> s -> s) -> s -> FingerTree e a -> s
+foldr : (e -> s -> s) -> s -> FingerTree e ann -> s
 foldr fn init tree =
     case tree of
         Empty ->
@@ -1216,7 +1166,7 @@ foldr fn init tree =
             foldrDigit fn (foldr fn (foldrDigit fn init r) m) l
 
 
-countNode : Node e a -> Int
+countNode : Node e ann -> Int
 countNode node =
     case node of
         Tip _ _ ->
@@ -1229,7 +1179,7 @@ countNode node =
             countNode n1 + countNode n2 + countNode n3
 
 
-countDigit : Digit e a -> Int
+countDigit : Digit e ann -> Int
 countDigit digit =
     case digit of
         D1 n1 ->
@@ -1247,7 +1197,7 @@ countDigit digit =
 
 {-| Return the number of elements.
 -}
-count : FingerTree e a -> Int
+count : FingerTree e ann -> Int
 count tree =
     case tree of
         Empty ->
@@ -1260,12 +1210,12 @@ count tree =
             countDigit l + count m + countDigit r
 
 
-{-| Reverse a Finger Tree.
+{-| Reverse ann Finger Tree.
 
 O(n)
 
 -}
-reverse : Ops e a -> FingerTree e a -> FingerTree e a
+reverse : Ops e ann -> FingerTree e ann -> FingerTree e ann
 reverse ops tree =
     reverseTree ops identity tree
 
@@ -1350,7 +1300,7 @@ filterMap ops fn tree =
 
 {-| Keep elements that satisfy the test.
 -}
-filter : Ops e a -> (e -> Bool) -> FingerTree e a -> FingerTree e a
+filter : Ops e ann -> (e -> Bool) -> FingerTree e ann -> FingerTree e ann
 filter ops pred tree =
     foldr
         (\x acc ->
@@ -1435,7 +1385,7 @@ mapDigit ops fn digit =
 all values that satisfy the test, and the second list contains all the value that
 do not.
 -}
-partition : Ops e a -> (e -> Bool) -> FingerTree e a -> ( FingerTree e a, FingerTree e a )
+partition : Ops e ann -> (e -> Bool) -> FingerTree e ann -> ( FingerTree e ann, FingerTree e ann )
 partition ops pred tree =
     foldr
         (\x ( yays, nays ) ->
@@ -1451,7 +1401,7 @@ partition ops pred tree =
 
 {-| Figure out whether the FingerTree contains a value.
 -}
-member : e -> FingerTree e a -> Bool
+member : e -> FingerTree e ann -> Bool
 member e tree =
     case tree of
         Empty ->
@@ -1464,7 +1414,7 @@ member e tree =
             memberDigit e l || member e m || memberDigit e r
 
 
-memberNode : e -> Node e a -> Bool
+memberNode : e -> Node e ann -> Bool
 memberNode e node =
     case node of
         Tip e1 _ ->
@@ -1477,7 +1427,7 @@ memberNode e node =
             memberNode e e1 || memberNode e e2 || memberNode e e3
 
 
-memberDigit : e -> Digit e a -> Bool
+memberDigit : e -> Digit e ann -> Bool
 memberDigit e digit =
     case digit of
         D1 n1 ->
@@ -1499,7 +1449,7 @@ element at index `i` initialized to the result of `(f i)`.
 The numbers `i` will be in the range `0..(n-1)`.
 
 -}
-initialize : Ops e a -> Int -> (Int -> e) -> FingerTree e a
+initialize : Ops e ann -> Int -> (Int -> e) -> FingerTree e ann
 initialize ops n toElement =
     List.foldl
         (\i acc -> rightCons ops (toElement i) acc)

@@ -73,7 +73,7 @@ create via =
             FingerTree.empty
 
         Singleton n ->
-            FingerTree.singleton n
+            FingerTree.singleton ops n
 
         FromList ns ->
             FingerTree.fromList ops ns
@@ -175,7 +175,7 @@ After toList/fromList:
                     |> Expect.equal 0
         , Test.fuzz Fuzz.int "singleton/toList == [x]" <|
             \n ->
-                FingerTree.singleton n
+                FingerTree.singleton ops n
                     |> FingerTree.toList
                     |> Expect.equalLists [ n ]
         , Test.fuzz (Fuzz.list Fuzz.int) "fromList/toList == id" <|
@@ -199,14 +199,14 @@ After toList/fromList:
                     |> Expect.equalLists (FingerTree.toList tree)
         , Test.test "foldl :: []" <|
             \() ->
-                FingerTree.singleton 2
+                FingerTree.singleton ops 2
                     |> FingerTree.leftCons ops 1
                     |> FingerTree.rightCons ops 3
                     |> FingerTree.foldl (::) []
                     |> Expect.equalLists [ 3, 2, 1 ]
         , Test.test "foldr :: []" <|
             \() ->
-                FingerTree.singleton 2
+                FingerTree.singleton ops 2
                     |> FingerTree.leftCons ops 1
                     |> FingerTree.rightCons ops 3
                     |> FingerTree.foldr (::) []
@@ -345,7 +345,7 @@ After toList/fromList:
                     |> FingerTree.toList
                     |> Expect.equalLists
                         (FingerTree.append ops
-                            (FingerTree.singleton n)
+                            (FingerTree.singleton ops n)
                             tree
                             |> FingerTree.toList
                         )
@@ -357,7 +357,7 @@ After toList/fromList:
                     |> Expect.equalLists
                         (FingerTree.append ops
                             tree
-                            (FingerTree.singleton n)
+                            (FingerTree.singleton ops n)
                             |> FingerTree.toList
                         )
         , Test.test "leftCons" <|
