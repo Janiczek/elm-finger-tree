@@ -481,4 +481,6 @@ After toList/fromList:
         , Test.todo "all"
         , Test.todo "any"
         , Test.todo "indexedMap"
+        , Test.todo "annotation"
+        , Test.todo "splitTree"
         ]
