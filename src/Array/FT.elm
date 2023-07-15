@@ -1,5 +1,7 @@
 module Array.FT exposing
     ( Array
+    , fromList
+    , getAt
     , length
     )
 
@@ -39,9 +41,13 @@ splitAt i (A xs) =
 getAt : Int -> Array a -> a
 getAt i (A xs) =
     case FT.splitTree ops (\n -> i < n) 0 xs of
-        -- TODO actually check this.. what if i == 10000000?
         Nothing ->
             impossible "Never happens!"
 
         Just ( _, x, _ ) ->
             Node.unwrap x
+
+
+fromList : List a -> Array a
+fromList xs =
+    A (FT.fromList ops xs)
